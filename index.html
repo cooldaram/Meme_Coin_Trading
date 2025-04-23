@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Meme Coin Trading Demo</title>
+
+        <!-- Font -->
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap"
+            rel="stylesheet"
+        />
+
+        <style>
+            :root {
+                --bg-color: #1a1c1e;
+                --card-bg: #242a34;
+                --secondary-bg: #444b59;
+                --text-primary: #e8e8e8;
+                --text-secondary: #bfc0c6;
+                --reasoning-color: #8a8d95;
+                --user-bubble: #303640;
+                --agent-bubble-border: rgba(232, 232, 232, 0.15);
+                --positive-color: #4ade80;
+                --negative-color: #f87171;
+                --input-bg: #242a34;
+                --send-button: #3b82f6;
+                --memory-notification-bg: rgba(68, 75, 89, 0.4);
+                --memory-notification-color: rgba(191, 192, 198, 0.9);
+            }
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+            html,
+            body {
+                height: 100%;
+                background: var(--bg-color);
+                overflow: hidden;
+                font-family: "Inter", sans-serif;
+            }
+            body {
+                display: flex;
+                justify-content: center;
+                color: var(--text-primary);
+                font-size: 14px;
+            }
+            #root {
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+                max-width: 750px;
+                height: 100%;
+                position: relative;
+            }
+            #message-container {
+                flex: 1;
+                overflow-y: auto;
+                overflow-x: hidden;
+                display: flex;
+                flex-direction: column;
+                padding: 15px;
+                -webkit-overflow-scrolling: touch;
+            }
+            /* custom scrollbar - match weekly demo */
+            #message-container::-webkit-scrollbar {
+                width: 6px;
+            }
+            #message-container::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            #message-container::-webkit-scrollbar-thumb {
+                background: var(--secondary-bg);
+                border-radius: 3px;
+                opacity: 0.5;
+            }
+            #message-container::-webkit-scrollbar-thumb:hover {
+                background: #5a6275;
+            }
+            #input-area {
+                padding: 15px;
+                border-top: 1px solid rgba(232, 232, 232, 0.08);
+                background: var(--bg-color);
+                height: 70px;
+            }
+            /* bottom input area - match weekly demo */
+            .input-form {
+                display: flex;
+            }
+            .text-input {
+                flex: 1;
+                padding: 8px 12px;
+                margin-right: 10px;
+                border-radius: 8px;
+                border: 1px solid rgba(232, 232, 232, 0.15);
+                background: var(--input-bg);
+                color: var(--text-primary);
+                font-size: 14px;
+                outline: none;
+            }
+            .send-button {
+                width: 42px;
+                height: 42px;
+                border-radius: 8px;
+                border: none;
+                background: var(--send-button);
+                color: #fff;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                transition: 0.2s;
+            }
+            .send-button:disabled {
+                background-color: var(--secondary-bg);
+                cursor: default;
+                opacity: 0.6;
+            }
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            .fade-in {
+                animation: fadeIn 0.3s ease forwards;
+            }
+            /* Demo Start and Retry button styling */
+            .retry-button {
+                padding: 10px 24px;
+                background: var(--send-button);
+                color: var(--text-primary);
+                border: none;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .retry-button:hover {
+                transform: scale(1.05);
+                background-color: #60a5fa;
+            }
+            .memory-indicator {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 11px;
+                font-weight: 500;
+                margin-top: 2px;
+                margin-bottom: 8px;
+                padding: 4px 8px;
+                border-radius: 4px;
+                background-color: var(--memory-notification-bg);
+                color: var(--memory-notification-color);
+                width: fit-content;
+                border: 1px solid rgba(191, 192, 198, 0.2);
+            }
+        </style>
+    </head>
+    <body>
+        <div id="root"></div>
+        <script
+            src="https://unpkg.com/react@18/umd/react.development.js"
+            crossorigin
+        ></script>
+        <script
+            src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
+            crossorigin
+        ></script>
+        <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+        <script type="text/babel">
+            const { useState, useEffect, useRef } = React;
+            const Message = ({
+                isUser,
+                isReasoning,
+                children,
+                label,
+                showMemoryUpdate,
+            }) => (
+                <div
+                    style={{
+                        alignSelf: isUser ? "flex-end" : "flex-start",
+                        background: isReasoning
+                            ? "transparent"
+                            : isUser
+                              ? "var(--user-bubble)"
+                              : "transparent",
+                        border: isReasoning ? "none" : "1px solid",
+                        borderColor: isUser
+                            ? "rgba(232,232,232,0.1)"
+                            : "var(--agent-bubble-border)",
+                        padding: isReasoning ? "8px" : "14px",
+                        borderRadius: "10px",
+                        marginBottom: "12px",
+                        maxWidth: "80%",
+                        width: "auto",
+                        wordBreak: "break-word",
+                        overflowWrap: "break-word",
+                        animation: "fadeIn .3s",
+                    }}
+                >
+                    <div
+                        style={{
+                            fontSize: "11px",
+                            fontWeight: 500,
+                            color: isReasoning
+                                ? "var(--reasoning-color)"
+                                : "var(--text-secondary)",
+                            marginBottom: "4px",
+                            textAlign: isUser ? "right" : "left",
+                        }}
+                    >
+                        {label}
+                    </div>
+                    {/* 메모리 업데이트 표시 */}
+                    {!isUser && showMemoryUpdate && (
+                        <div className="memory-indicator">
+                            <svg
+                                width="10"
+                                height="10"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <path
+                                    d="M13.3334 4.66667L6.00002 12L2.66669 8.66667"
+                                    stroke="currentColor"
+                                    strokeWidth="1.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            </svg>
+                            Memory updated
+                        </div>
+                    )}
+                    <div
+                        style={{
+                            whiteSpace: "pre-wrap",
+                            fontStyle: isReasoning ? "italic" : "normal",
+                            color: isReasoning
+                                ? "var(--reasoning-color)"
+                                : "var(--text-primary)",
+                        }}
+                    >
+                        {children}
+                    </div>
+                </div>
+            );
+            const ALL_CONVERSATION_DATA = [
+                {
+                    userMessage: {
+                        type: "user",
+                        label: "Me",
+                        content:
+                            "I want to auto-trade only low-risk meme coin signals via Telegram bot.",
+                    },
+                    aimoResponses: [
+                        {
+                            type: "reasoning",
+                            label: "Aimo Reasoning",
+                            content:
+                                "To fulfill this request, I need to:\n- Connect Signal Tool to retrieve meme coin trading signals\n- Run each signal through the Risk Check Tool\n- Filter only low-risk trades\n- Execute approved signals via Telegram Trade Bot\n- Ensure the user is connected to the proper chain (e.g. Solana or Ethereum) and has authorized Telegram access",
+                        },
+                        {
+                            type: "agent",
+                            label: "Aimo",
+                            content:
+                                "Let's start by connecting the Signal Tool to gather meme coin signals from your subscribed channels.",
+                            showMemoryUpdate: true,
+                        },
+                        {
+                            type: "reasoning",
+                            label: "Aimo Reasoning",
+                            content:
+                                "I now need to validate each signal using the Risk Check Tool for volatility, slippage, and wallet behavior.",
+                        },
+                        {
+                            type: "agent",
+                            label: "Aimo",
+                            content:
+                                "Analyzing each meme coin signal...\n✅ Signal A: Passed\n❌ Signal B: High volatility\n✅ Signal C: Passed\nI'll forward only the approved ones.",
+                        },
+                        {
+                            type: "reasoning",
+                            label: "Aimo Reasoning",
+                            content:
+                                "Next, I'll deliver the approved signals to the Telegram Trade Bot for auto-execution. I also need to ensure your Telegram account is authorized.",
+                        },
+                        {
+                            type: "agent",
+                            label: "Aimo",
+                            content:
+                                "Telegram Trade Bot connected.\nExecuting trades for Signal A and C...",
+                        },
+                        {
+                            type: "reasoning",
+                            label: "Aimo Reasoning",
+                            content:
+                                "Now, I should confirm the transaction status and send a trade summary to the user via Telegram DM.",
+                        },
+                        {
+                            type: "agent",
+                            label: "Aimo",
+                            content:
+                                "✅ Executed: 1,000 $ZEREBRO @ $0.07199\n✅ Executed: 300 $FARTCOIN @ $1.14\n📬 Fill details have been sent to your Telegram DM.",
+                        },
+                    ],
+                },
+                {
+                    userMessage: {
+                        type: "user",
+                        label: "Me",
+                        content: "Can I see a report preview?",
+                    },
+                    aimoResponses: [
+                        {
+                            type: "agent",
+                            label: "Aimo",
+                            content:
+                                "Sure! Here's a sample trade fill preview:\n\n🧾 Fill Report  \nToken: ZEREBRO  \nSize: 1,000  \nEntry: $0.07199  \nStatus: Filled\n\nToken: FARTCOIN  \nSize: 300  \nEntry: $1.14  \nStatus: Filled\n\nDelivered to: @userhandle",
+                        },
+                    ],
+                },
+            ];
+            const App = () => {
+                const [messages, setMessages] = useState([]);
+                const [isCompleted, setIsCompleted] = useState(false);
+                const [isProcessing, setIsProcessing] = useState(false);
+                const [currentStep, setCurrentStep] = useState(0);
+                const [inputText, setInputText] = useState("");
+                const [hasNewMessages, setHasNewMessages] = useState(false);
+                const [isBottomVisible, setIsBottomVisible] = useState(true);
+                const messagesEndRef = useRef(null);
+                const prevCountRef = useRef(0);
+                const messageContainerRef = useRef(null);
+                useEffect(() => {
+                    const obs = new IntersectionObserver(
+                        ([e]) => {
+                            setIsBottomVisible(e.isIntersecting);
+                            if (e.isIntersecting) setHasNewMessages(false);
+                        },
+                        { root: messageContainerRef.current, threshold: 1 },
+                    );
+                    if (messagesEndRef.current)
+                        obs.observe(messagesEndRef.current);
+                    return () => obs.disconnect();
+                }, []);
+                const scrollToBottom = () =>
+                    messagesEndRef.current?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "end",
+                    });
+                useEffect(() => {
+                    if (
+                        messages.length > prevCountRef.current &&
+                        !isBottomVisible
+                    )
+                        setHasNewMessages(true);
+                    prevCountRef.current = messages.length;
+                }, [messages, isBottomVisible]);
+                useEffect(() => {
+                    setInputText(
+                        ALL_CONVERSATION_DATA[currentStep]?.userMessage
+                            .content || "",
+                    );
+                }, [currentStep]);
+                const handleUserMessage = (idx) => {
+                    if (isProcessing) return;
+                    setIsProcessing(true);
+                    setInputText("");
+                    const scenario = ALL_CONVERSATION_DATA[idx];
+                    if (!scenario) return;
+                    if (idx === 0) setMessages([scenario.userMessage]);
+                    else setMessages((m) => [...m, scenario.userMessage]);
+                    const proc = (res, i) => {
+                        if (i >= res.length) {
+                            setIsProcessing(false);
+                            if (idx + 1 < ALL_CONVERSATION_DATA.length) {
+                                setCurrentStep(idx + 1);
+                                setTimeout(
+                                    () => handleUserMessage(idx + 1),
+                                    800,
+                                );
+                            } else setIsCompleted(true);
+                            return;
+                        }
+                        setTimeout(() => {
+                            setMessages((m) => [...m, res[i]]);
+                            proc(res, i + 1);
+                        }, 1000);
+                    };
+                    proc(scenario.aimoResponses, 0);
+                };
+                const resetConversation = () => {
+                    setMessages([]);
+                    setIsCompleted(false);
+                    setIsProcessing(false);
+                    setCurrentStep(0);
+                };
+                return (
+                    <div
+                        style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            height: "100%",
+                            position: "relative",
+                        }}
+                    >
+                        <div
+                            id="message-container"
+                            ref={messageContainerRef}
+                            style={{
+                                flex: 1,
+                                overflowY: "auto",
+                                padding: "15px",
+                            }}
+                        >
+                            {messages.map((msg, i) => (
+                                <Message
+                                    key={i}
+                                    isUser={msg.type === "user"}
+                                    isReasoning={msg.type === "reasoning"}
+                                    label={msg.label}
+                                    showMemoryUpdate={msg.showMemoryUpdate}
+                                >
+                                    {msg.content}
+                                </Message>
+                            ))}
+                            <div
+                                ref={messagesEndRef}
+                                style={{ height: "40px" }}
+                            />
+                        </div>
+                        {!isCompleted && messages.length === 0 && (
+                            <div
+                                style={{
+                                    position: "fixed",
+                                    top: "50%",
+                                    left: "50%",
+                                    transform: "translate(-50%, -50%)",
+                                    zIndex: 1000,
+                                }}
+                            >
+                                <button
+                                    onClick={() => {
+                                        handleUserMessage(0);
+                                    }}
+                                    className="retry-button"
+                                >
+                                    Demo Start
+                                </button>
+                            </div>
+                        )}
+                        {hasNewMessages && (
+                            <div
+                                style={{
+                                    position: "fixed",
+                                    bottom: "90px",
+                                    left: "50%",
+                                    transform: "translateX(-50%)",
+                                    zIndex: 1000,
+                                }}
+                            >
+                                <button
+                                    onClick={() => {
+                                        scrollToBottom();
+                                        setHasNewMessages(false);
+                                    }}
+                                    style={{
+                                        padding: "4px 12px",
+                                        fontSize: "12px",
+                                        borderRadius: "6px",
+                                        backgroundColor: "var(--send-button)",
+                                        color: "var(--text-primary)",
+                                        border: "none",
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    New Messages
+                                </button>
+                            </div>
+                        )}
+                        <div id="input-area">
+                            {isCompleted ? (
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        justifyContent: "center",
+                                    }}
+                                >
+                                    <button
+                                        onClick={resetConversation}
+                                        className="retry-button"
+                                    >
+                                        Retry
+                                    </button>
+                                </div>
+                            ) : (
+                                <form
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        handleUserMessage(currentStep);
+                                    }}
+                                    style={{ display: "flex" }}
+                                >
+                                    <input
+                                        className="text-input"
+                                        readOnly
+                                        value={inputText}
+                                    />
+                                    <button
+                                        type="submit"
+                                        disabled={isProcessing}
+                                        className="send-button"
+                                    >
+                                        <svg
+                                            width="20"
+                                            height="20"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                        >
+                                            <path
+                                                d="M22 2L11 13"
+                                                stroke="white"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            />
+                                            <path
+                                                d="M22 2L15 22L11 13L2 9L22 2Z"
+                                                stroke="white"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            />
+                                        </svg>
+                                    </button>
+                                </form>
+                            )}
+                        </div>
+                    </div>
+                );
+            };
+            ReactDOM.render(<App />, document.getElementById("root"));
+        </script>
+    </body>
+</html>
