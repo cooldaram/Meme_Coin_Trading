@@ -328,7 +328,7 @@
                             type: "agent",
                             label: "Aimo",
                             content:
-                                "Sure! Here's a sample trade fill preview:\n\n🧾 Fill Report  \nToken: ZEREBRO  \nQuantity: 1,000  \nEntry: $0.07199  \nStatus: Filled\n\nToken: FARTCOIN  \nQuantity: 300  \nEntry: $1.14  \nStatus: Filled\n\nDelivered to: @userhandle",
+                                "Sure! Here's a sample trade fill preview:\n\n🧾 Fill Report  \nToken: ZEREBRO  \nSize: 1,000  \nEntry: $0.07199  \nStatus: Filled\n\nToken: FARTCOIN  \nSize: 300  \nEntry: $1.14  \nStatus: Filled\n\nDelivered to: @userhandle",
                         },
                     ],
                 },
@@ -390,7 +390,7 @@
                                 setCurrentStep(idx + 1);
                                 setTimeout(
                                     () => handleUserMessage(idx + 1),
-                                    800,
+                                    2000,
                                 );
                             } else setIsCompleted(true);
                             return;
@@ -398,7 +398,7 @@
                         setTimeout(() => {
                             setMessages((m) => [...m, res[i]]);
                             proc(res, i + 1);
-                        }, 1000);
+                        }, 2000);
                     };
                     proc(scenario.aimoResponses, 0);
                 };
